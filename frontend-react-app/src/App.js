@@ -1,21 +1,32 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AlertProvider } from "./contexts/AlertContext";
+import { ThemeProvider } from "./hooks/useThemeContext";
+import ScrollToTop from "./components/ScrollToTop";
+import Footer from "./components/Footer";
+import Navbar from "./components/Navbar";
+import Home from "./pages/Home";
+import ServerError from "./pages/errors/ServerError";
+import NotFound from "./pages/errors/NotFound";
+
+
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <AlertProvider>
+      <ThemeProvider>
+        <BrowserRouter>
+          <ScrollToTop />
+            <Navbar />
+            <main className="bg-gray-50 dark:bg-gray-900 flex-grow pt-20 md:pt-24 min-h-screen">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/server-error" element={<ServerError />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </main>
+            <Footer />
+        </BrowserRouter>
+      </ThemeProvider>
+    </AlertProvider>
   );
 }
 
