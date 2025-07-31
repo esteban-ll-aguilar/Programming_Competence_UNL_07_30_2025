@@ -7,13 +7,22 @@ class FastAPIConfig(BaseModel):
     APP_NAME: str = "Backend FastAPI From Competence"
     DESCRIPTION: str = "Desarrollo del backen para implementar en la solucion del problema planteado"
 
+    # JWT Settings
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "secret_key_for_jwt_tokens_please_change_in_production")
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    TOKEN_AUTO_REFRESH: bool = True  # Auto refresh tokens when they're about to expire
+    
+    # OpenAI Configuration
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_ORGANIZATION: str = os.getenv("OPENAI_ORGANIZATION", "")
+    
+    # API Tokens
     __raw_tokens = os.getenv("VALID_TOKENS")
     if __raw_tokens is None:
         raise Exception("No hay tokens válidos para la API")
 
     _VALID_TOKENS = json.loads(__raw_tokens)
-
-    
 
     # Database configuration
     _DB_USERNAME: str = os.getenv("DB_USERNAME", "postgres")

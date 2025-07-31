@@ -2,10 +2,9 @@ from typing import Dict, List, Optional, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.domain.dao_control import DaoControl
 from app.domain.models.user import User
-from app.domain.controls.action_history_control import ActionHistoryControl
 
 
-class UserControl:
+class UserDaoControl:
     """
     User control class that utilizes GenericDAO for database operations.
     This class adds business logic specific to users while using the generic DAO for CRUD operations.
@@ -14,10 +13,9 @@ class UserControl:
     def __init__(self):
         self.model = User()  # Instancia del modelo
         self.dao = DaoControl(User)  # Clase del modelo para el DAO
-        self.action_history = ActionHistoryControl()
         
 
-    async def create_user(self, user_data: Dict[str, Any]) -> User:
+    async def create_action_hystory(self, user_data: Dict[str, Any]) -> User:
         """
         Create a new user.
         
@@ -43,16 +41,7 @@ class UserControl:
             raise ValueError("Password cannot be None")
         
         # Enviamos los datos serializados al DAO
-        user = await self.dao.create(self.model.serialize)
-        
-        # Registrar la acción
-        await self.action_history.create_action({
-            "user_id": self.model.dni,
-            "action_type": "CREATE_USER",
-            "details": f"User {self.model.username} created"
-        })
-        
-        return user
+        return await self.dao.create(self.model.serialize)
 
     async def get_user(self, user_id: int) -> Optional[User]:
         """
@@ -65,33 +54,6 @@ class UserControl:
             The user if found, None otherwise
         """
         return await self.dao.get(user_id)
-        
-    async def get_user_by_dni(self, dni: str) -> Optional[Dict[str, Any]]:
-        """
-        Get a user by DNI.
-        
-        Args:
-            dni: The user's DNI
-            
-        Returns:
-            The user data as dictionary if found, None otherwise
-        """
-        try:
-            # Get user by DNI (primary key)
-            user = await self.dao.get(dni)
-            if user:
-                # Convert to dictionary
-                return {
-                    "dni": user.dni,
-                    "username": user.username,
-                    "email": user.email,
-                    "hashed_password": user.hashed_password,
-                    "jwt_token": user.jwt_token
-                }
-            return None
-        except Exception as e:
-            print(f"Error getting user by DNI: {e}")
-            return None
 
     async def get_user_by_username(self, username: str) -> bool:
         """
@@ -109,11 +71,10 @@ class UserControl:
         if users:
             user_data = users[0]
             # Copiamos directamente las propiedades del objeto encontrado
-            self.model.dni = user_data.dni if hasattr(user_data, "dni") else None
+            self.model.dni = user_data.dni
             self.model.username = user_data.username
             self.model.email = user_data.email
             self.model.hashed_password = user_data.hashed_password
-            self.model.jwt_token = user_data.jwt_token if hasattr(user_data, "jwt_token") else None
             return True
         return False
 
@@ -155,6 +116,7 @@ class UserControl:
         Update a user.
         
         Args:
+            db: Database session
             user_id: The user ID
             user_data: Dictionary with the user data to update
             
@@ -166,81 +128,23 @@ class UserControl:
             # In a real application, you would hash the password here
             user_data["hashed_password"] = user_data.pop("password")  # This is just a placeholder
 
-        user = await self.dao.update(id=user_id, obj_in=user_data)
-        
-        if user:
-            # Register the action
-            await self.action_history.create_action({
-                "user_id": user.dni,
-                "action_type": "UPDATE_USER",
-                "details": f"User {user.username} updated"
-            })
-            
-        return user
+        return await self.dao.update(id=user_id, obj_in=user_data)
 
     async def delete_user(self, user_id: int) -> Optional[User]:
         """
         Delete a user.
         
         Args:
+            db: Database session
             user_id: The user ID
             
         Returns:
             The deleted user
         """
-        user = await self.dao.get(user_id)
-        
-        if user:
-            # Register the action before deleting
-            await self.action_history.create_action({
-                "user_id": user.dni,
-                "action_type": "DELETE_USER",
-                "details": f"User {user.username} deleted"
-            })
-            
         return await self.dao.delete(id=user_id)
-        
-    async def authenticate_user(self, username: str, password: str) -> Optional[Dict[str, Any]]:
+
+    async def get_active_users_count(self) -> int:
         """
-        Authenticate a user with username and password.
-        
-        Args:
-            username: The username
-            password: The password
-            
-        Returns:
-            User data if authentication successful, None otherwise
+        Count active users.
         """
-        # Get user by username
-        if not await self.get_user_by_username(username):
-            return None
-            
-        # Verify password
-        if not self.model.verify_password(password):
-            return None
-            
-        # Return user data
-        return {
-            "dni": self.model.dni,
-            "username": self.model.username,
-            "email": self.model.email
-        }
-        
-    async def update_user_token(self, dni: str, token: str) -> bool:
-        """
-        Update the JWT token for a user.
-        
-        Args:
-            dni: The user's DNI
-            token: The JWT token to store
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            # Update the user's token
-            await self.dao.update(id=dni, obj_in={"jwt_token": token})
-            return True
-        except Exception as e:
-            print(f"Error updating user token: {e}")
-            return False
+        return await self.dao.count(filters={"is_active": True})

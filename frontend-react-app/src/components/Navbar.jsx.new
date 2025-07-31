@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, X, Sun, Moon, ChevronDown, Share2Icon, User2Icon } from 'lucide-react';
+import { Menu, X, Sun, Moon, ChevronDown, Share2Icon } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useThemeContext from '../hooks/useThemeContext';
 import { LOGO192 } from '../lib/constants';

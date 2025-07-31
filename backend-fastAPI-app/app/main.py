@@ -37,6 +37,11 @@ def create_app() -> FastAPI:
         async with db.engine.begin() as conn:
             # Import all models here to ensure they're registered with the metadata
             from app.domain.models.user import User
+            from app.domain.models.drawer import Drawer
+            from app.domain.models.object_type import ObjectType
+            from app.domain.models.object import Object
+            from app.domain.models.actions_historial import ActionHistory
+            
             # Create tables
             await conn.run_sync(db.Base.metadata.create_all)
 
