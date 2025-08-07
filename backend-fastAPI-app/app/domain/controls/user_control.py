@@ -117,20 +117,29 @@ class UserControl:
             return True
         return False
 
-    async def get_user_by_email(self, email: str) -> Optional[User]:
+    async def get_user_by_email(self, email: str) -> bool:
         """
         Get a user by email.
         
         Args:
-            db: Database session
             email: The email
             
         Returns:
-            The user if found, None otherwise
+            True if user was found, False otherwise
         """
         filters = {"email": email}
         users = await self.dao.filter_by(filters=filters, limit=1)
-        return users[0] if users else None
+        
+        if users:
+            user_data = users[0]
+            # Copiamos directamente las propiedades del objeto encontrado
+            self.model.dni = user_data.dni if hasattr(user_data, "dni") else None
+            self.model.username = user_data.username
+            self.model.email = user_data.email
+            self.model.hashed_password = user_data.hashed_password
+            self.model.jwt_token = user_data.jwt_token if hasattr(user_data, "jwt_token") else None
+            return True
+        return False
 
     async def get_users(
         self, skip: int = 0, limit: int = 100
@@ -149,13 +158,13 @@ class UserControl:
         return await self.dao.get_multi(skip=skip, limit=limit)
 
     async def update_user(
-        self, user_id: int, user_data: Dict[str, Any]
+        self, dni: str, user_data: Dict[str, Any]
     ) -> Optional[User]:
         """
         Update a user.
         
         Args:
-            user_id: The user ID
+            dni: The user's DNI (primary key)
             user_data: Dictionary with the user data to update
             
         Returns:
@@ -166,7 +175,7 @@ class UserControl:
             # In a real application, you would hash the password here
             user_data["hashed_password"] = user_data.pop("password")  # This is just a placeholder
 
-        user = await self.dao.update(id=user_id, obj_in=user_data)
+        user = await self.dao.update(id=dni, obj_in=user_data)
         
         if user:
             # Register the action
@@ -178,17 +187,17 @@ class UserControl:
             
         return user
 
-    async def delete_user(self, user_id: int) -> Optional[User]:
+    async def delete_user(self, dni: str) -> Optional[User]:
         """
         Delete a user.
         
         Args:
-            user_id: The user ID
+            dni: The user's DNI (primary key)
             
         Returns:
             The deleted user
         """
-        user = await self.dao.get(user_id)
+        user = await self.dao.get(dni)
         
         if user:
             # Register the action before deleting
@@ -198,7 +207,7 @@ class UserControl:
                 "details": f"User {user.username} deleted"
             })
             
-        return await self.dao.delete(id=user_id)
+        return await self.dao.delete(id=dni)
         
     async def authenticate_user(self, username: str, password: str) -> Optional[Dict[str, Any]]:
         """
@@ -213,6 +222,32 @@ class UserControl:
         """
         # Get user by username
         if not await self.get_user_by_username(username):
+            return None
+            
+        # Verify password
+        if not self.model.verify_password(password):
+            return None
+            
+        # Return user data
+        return {
+            "dni": self.model.dni,
+            "username": self.model.username,
+            "email": self.model.email
+        }
+        
+    async def authenticate_user_by_email(self, email: str, password: str) -> Optional[Dict[str, Any]]:
+        """
+        Authenticate a user with email and password.
+        
+        Args:
+            email: The email
+            password: The password
+            
+        Returns:
+            User data if authentication successful, None otherwise
+        """
+        # Get user by email
+        if not await self.get_user_by_email(email):
             return None
             
         # Verify password

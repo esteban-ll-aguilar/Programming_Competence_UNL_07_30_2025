@@ -45,10 +45,7 @@ def create_app() -> FastAPI:
             # Create tables
             await conn.run_sync(db.Base.metadata.create_all)
 
-    app.include_router(router=v1_router, prefix="/v1")
-    app.include_router(router=v2_router, prefix="/v2")
-    
-    # CORS configuration
+    # CORS configuration - Colocado antes de incluir los routers
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -56,6 +53,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    
+    app.include_router(router=v1_router, prefix="/v1")
+    app.include_router(router=v2_router, prefix="/v2")
 
     return app
 

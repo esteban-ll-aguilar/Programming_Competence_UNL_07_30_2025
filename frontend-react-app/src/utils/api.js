@@ -1,9 +1,10 @@
 // src/utils/api.js
 import { getStoredAuthToken } from './authStorage';
 
-// Base URL for the API
+// Base URL for the API - Use environment variables
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
-const API_TOKEN = process.env.REACT_APP_API_KEY || ''; // Using a token from the valid tokens list
+// Use token from environment variables
+const API_TOKEN = process.env.REACT_APP_API_TOKEN || 'api-cZzRx1H0vlmG9ad9mA1ryi9wT0PRH'; 
 
 // Create default headers with auth token if available
 const createHeaders = (includeAuth = true, contentType = 'application/json') => {

@@ -24,6 +24,10 @@ class DaoControl(Generic[ModelType]):
         """
         self.model = model
         self.session_factory = db.get_db_session
+        
+        # Determine the primary key column name
+        pk_columns = [col.name for col in model.__table__.primary_key.columns]
+        self.pk_name = pk_columns[0] if pk_columns else "id"
 
     async def create(self, obj_in: Dict[str, Any]) -> ModelType:
         """
@@ -59,7 +63,7 @@ class DaoControl(Generic[ModelType]):
         """
         try:
             async with self.session_factory() as session:
-                query = select(self.model).where(self.model.id == id)
+                query = select(self.model).where(getattr(self.model, self.pk_name) == id)
                 result = await session.execute(query)
                 return result.scalars().first()
         except SQLAlchemyError as e:
@@ -103,7 +107,7 @@ class DaoControl(Generic[ModelType]):
             async with self.session_factory() as session:
                 stmt = (
                     update(self.model)
-                    .where(self.model.id == id)
+                    .where(getattr(self.model, self.pk_name) == id)
                     .values(**obj_in)
                     .returning(self.model)
                 )
@@ -127,7 +131,7 @@ class DaoControl(Generic[ModelType]):
         """
         try:
             async with self.session_factory() as session:
-                stmt = delete(self.model).where(self.model.id == id).returning(self.model)
+                stmt = delete(self.model).where(getattr(self.model, self.pk_name) == id).returning(self.model)
                 result = await session.execute(stmt)
                 await session.commit()
                 return result.scalars().first()

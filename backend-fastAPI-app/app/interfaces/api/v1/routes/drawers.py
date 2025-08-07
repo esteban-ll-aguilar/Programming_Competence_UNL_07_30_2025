@@ -1,44 +1,62 @@
-from fastapi import APIRouter, Request, status, Depends, HTTPException
+from fastapi import APIRouter, Request, status, Depends, HTTPException, Body
 from fastapi.responses import JSONResponse
 from app.domain.controls.drawer_control import DrawerControl
 from app.domain.controls.user_dao_control import UserDaoControl
 from typing import Optional, List, Dict, Any
 from app.lib.token_header import get_current_user
+from app.interfaces.schemas import (
+    DrawerCreate,
+    DrawerUpdate,
+    DrawerResponse,
+    DrawerActionResponse
+)
 
 router = APIRouter()
 
-@router.post("/create", status_code=status.HTTP_201_CREATED)
-async def create_drawer(request: Request, current_user: Dict[str, Any] = Depends(get_current_user)):
-    # Extraemos los datos del request
-    drawer_data = await request.json()
+@router.post("/create", status_code=status.HTTP_201_CREATED, response_model=DrawerActionResponse)
+async def create_drawer(
+    drawer_data: DrawerCreate = Body(...),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Crea un nuevo cajón para el usuario autenticado.
+    
+    Args:
+        drawer_data: Datos del cajón a crear
+        current_user: Usuario autenticado (inyectado por la dependencia get_current_user)
+        
+    Returns:
+        Mensaje de confirmación
+    """
     drawer = DrawerControl()
     
     try:
         # Crear el cajón con el ID del usuario actual
-        await drawer.create_drawer(user_id=current_user["dni"], drawer_data=drawer_data)
+        await drawer.create_drawer(user_id=current_user["dni"], drawer_data=drawer_data.dict())
         
-        return JSONResponse(
-            content={"message": "Drawer created successfully"},
-            status_code=status.HTTP_201_CREATED
-        )
+        return DrawerActionResponse(message="Drawer created successfully")
     except ValueError as e:
-        return JSONResponse(
-            content={"error": str(e)},
-            status_code=status.HTTP_400_BAD_REQUEST
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
         )
 
-@router.get("/", status_code=status.HTTP_200_OK)
+@router.get("/", status_code=status.HTTP_200_OK, response_model=List[DrawerResponse])
 async def get_user_drawers(
     skip: int = 0, 
     limit: int = 100, 
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
-    Get all drawers for the current user with pagination.
+    Obtiene todos los cajones del usuario autenticado con paginación.
     
     Args:
-        skip: Number of drawers to skip
-        limit: Maximum number of drawers to return
+        skip: Número de cajones a saltar
+        limit: Número máximo de cajones a devolver
+        current_user: Usuario autenticado (inyectado por la dependencia get_current_user)
+        
+    Returns:
+        Lista de cajones serializados
     """
     drawer = DrawerControl()
     drawers = await drawer.get_user_drawers(user_id=current_user["dni"], skip=skip, limit=limit)
@@ -47,6 +65,8 @@ async def get_user_drawers(
     serialized_drawers = []
     for drawer_obj in drawers:
         serialized_drawers.append(drawer_obj.serialize)
+    
+    return serialized_drawers
     
     return JSONResponse(
         content=serialized_drawers,

@@ -5,7 +5,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useAlert } from "../../contexts/AlertContext";
 
 const Login = () => {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
@@ -14,24 +14,31 @@ const Login = () => {
   const location = useLocation();
   
   // Get the redirect path or default to home page
-  const from = location.state?.from?.pathname || "/drawers";
+  const from = location.state?.from?.pathname || "/";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!username || !password) {
-      error("Por favor ingrese nombre de usuario y contraseña");
+    if (!email || !password) {
+      error("Por favor ingrese email y contraseña");
       return;
     }
     
     setIsLoading(true);
+    console.log("Iniciando proceso de login con:", { email });
     
     try {
-      const result = await login(username, password);
+      console.log("Enviando solicitud de login...");
+      const result = await login(email, password);
+      console.log("Resultado del login:", result);
       
       if (result.success) {
         success("Inicio de sesión exitoso");
-        navigate(from, { replace: true });
+        console.log("Redirigiendo a:", from);
+        // Pequeño retraso para asegurar que todo se ha procesado
+        setTimeout(() => {
+          navigate(from, { replace: true });
+        }, 100);
       } else {
         error(result.message);
       }
@@ -58,18 +65,18 @@ const Login = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label 
-              htmlFor="username" 
+              htmlFor="email" 
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
-              Nombre de Usuario
+              Correo Electrónico
             </label>
             <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
-              placeholder="Ingrese su nombre de usuario"
+              placeholder="Ingrese su correo electrónico"
               disabled={isLoading}
               required
             />

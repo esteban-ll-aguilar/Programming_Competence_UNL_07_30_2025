@@ -1,45 +1,59 @@
-from fastapi import APIRouter, Request, status, Depends, HTTPException
+from fastapi import APIRouter, Request, status, Depends, HTTPException, Body
 from fastapi.responses import JSONResponse
 from app.domain.controls.object_type_control import ObjectTypeControl
 from typing import Optional, List, Dict, Any
 from app.lib.token_header import get_current_user
+from app.interfaces.schemas import (
+    ObjectTypeCreate,
+    ObjectTypeUpdate,
+    ObjectTypeResponse,
+    ObjectTypeActionResponse
+)
 
 router = APIRouter()
 
-@router.post("/create", status_code=status.HTTP_201_CREATED)
-async def create_object_type(request: Request, current_user: Dict[str, Any] = Depends(get_current_user)):
+@router.post("/create", status_code=status.HTTP_201_CREATED, response_model=ObjectTypeActionResponse)
+async def create_object_type(
+    type_data: ObjectTypeCreate = Body(...),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
     """
-    Create a new object type.
+    Crea un nuevo tipo de objeto.
+    
+    Args:
+        type_data: Datos del tipo de objeto a crear
+        current_user: Usuario autenticado (inyectado por la dependencia get_current_user)
+        
+    Returns:
+        Mensaje de confirmación
     """
-    # Extraemos los datos del request
-    type_data = await request.json()
     type_control = ObjectTypeControl()
     
     try:
         # Crear el tipo de objeto con el ID del usuario actual
-        await type_control.create_object_type(user_id=current_user["dni"], type_data=type_data)
+        await type_control.create_object_type(user_id=current_user["dni"], type_data=type_data.dict())
         
-        return JSONResponse(
-            content={"message": "Object type created successfully"},
-            status_code=status.HTTP_201_CREATED
-        )
+        return ObjectTypeActionResponse(message="Object type created successfully")
     except ValueError as e:
-        return JSONResponse(
-            content={"error": str(e)},
-            status_code=status.HTTP_400_BAD_REQUEST
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
         )
 
-@router.get("/", status_code=status.HTTP_200_OK)
+@router.get("/", status_code=status.HTTP_200_OK, response_model=List[ObjectTypeResponse])
 async def get_all_object_types(
     skip: int = 0, 
     limit: int = 100
 ):
     """
-    Get all object types with pagination.
+    Obtiene todos los tipos de objetos con paginación.
     
     Args:
-        skip: Number of object types to skip
-        limit: Maximum number of object types to return
+        skip: Número de tipos de objetos a saltar
+        limit: Número máximo de tipos de objetos a devolver
+        
+    Returns:
+        Lista de tipos de objetos serializados
     """
     type_control = ObjectTypeControl()
     object_types = await type_control.get_all_object_types(skip=skip, limit=limit)
@@ -48,6 +62,8 @@ async def get_all_object_types(
     serialized_types = []
     for type_obj in object_types:
         serialized_types.append(type_obj.serialize)
+    
+    return serialized_types
     
     return JSONResponse(
         content=serialized_types,
